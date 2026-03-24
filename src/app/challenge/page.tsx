@@ -42,7 +42,7 @@ export default function ChallengeLanding() {
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center gap-3">
               <div className="w-3 h-3 bg-forest" />
-              <span className="text-sm font-medium tracking-wider uppercase">SYMIONE</span>
+              <span className="text-sm font-medium tracking-wider uppercase">RELIABLE</span>
             </Link>
             <nav className="flex items-center gap-6">
               <Link href="/challenge/me" className="btn-ghost text-sm">
@@ -254,14 +254,14 @@ export default function ChallengeLanding() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 bg-forest" />
-              <span className="text-sm font-medium tracking-wider uppercase">SYMIONE</span>
+              <span className="text-sm font-medium tracking-wider uppercase">RELIABLE</span>
             </div>
             <div className="flex items-center gap-6">
               <Link href="/templates" className="text-micro text-muted hover:text-forest transition-colors">
                 Developers: Build your own →
               </Link>
               <p className="text-micro text-muted">
-                Powered by Stripe Connect
+                Powered by SYMIONE
               </p>
             </div>
           </div>
