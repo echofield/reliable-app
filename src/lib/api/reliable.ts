@@ -16,10 +16,8 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const normalizedEndpoint = endpoint.includes('?')
-    ? endpoint.replace('?', '/?')
-    : endpoint.endsWith('/') ? endpoint : `${endpoint}/`
-  const url = `${API_URL}${normalizedEndpoint}`
+  // Don't add trailing slashes - causes redirect issues with Cloud Run
+  const url = `${API_URL}${endpoint}`
 
   const response = await fetch(url, {
     ...options,
