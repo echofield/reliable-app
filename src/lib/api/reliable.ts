@@ -1,6 +1,6 @@
 /**
- * RELIABLE V0 API Client
- * 7-Day Execution Challenge System
+ * RELIABLE API Client
+ * Creator Challenge Room + V0 Execution Challenge System
  */
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -16,7 +16,6 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  // Don't add trailing slashes - causes redirect issues with Cloud Run
   const url = `${API_URL}${endpoint}`
 
   const response = await fetch(url, {
@@ -32,7 +31,6 @@ async function request<T>(
     throw new ApiError(response.status, error.detail || 'Request failed')
   }
 
-  // Handle 204 No Content
   if (response.status === 204) {
     return null as T
   }
@@ -40,7 +38,7 @@ async function request<T>(
   return response.json()
 }
 
-// === Types ===
+// === V0 Types ===
 
 export interface StakeOption {
   amount_cents: number
@@ -132,25 +130,99 @@ export interface KernelRecord {
   sealed_at: string
 }
 
-// === API Functions ===
+// === Creator Challenge Room Types ===
 
-/**
- * Get the currently active or open challenge
- */
+export interface CreatorChallenge {
+  id: string
+  slug: string
+  preset: string | null
+  title: string
+  description: string
+  proof_description: string
+  proof_type: 'image' | 'screenshot' | 'url'
+  duration_days: number
+  stake_amount_cents: number
+  stake_display: string
+  currency: string
+  creator_id: string
+  creator_email: string
+  creator_name: string | null
+  creator_avatar_url: string | null
+  creator_fee_percent: number
+  platform_fee_percent: number
+  status: 'open' | 'active' | 'resolving' | 'resolved' | 'cancelled'
+  participant_count: number
+  pool_total_cents: number
+  pool_display: string
+  days_remaining: number | null
+  starts_at: string | null
+  ends_at: string | null
+  created_at: string
+}
+
+export interface CreatorChallengePublic {
+  id: string
+  slug: string
+  title: string
+  description: string
+  proof_description: string
+  proof_type: 'image' | 'screenshot' | 'url'
+  duration_days: number
+  stake_amount_cents: number
+  stake_display: string
+  currency: string
+  creator: {
+    name: string | null
+    avatar_url: string | null
+    verified: boolean
+  }
+  status: 'open' | 'active' | 'resolving' | 'resolved'
+  participant_count: number
+  pool_total_cents: number
+  pool_display: string
+  days_remaining: number | null
+  starts_at: string | null
+  ends_at: string | null
+  stats: {
+    last_win_amount: number
+    completed_count: number
+    failed_count: number
+  } | null
+}
+
+export interface PendingProof {
+  id: string
+  participant_id: string
+  participant_email: string
+  participant_name: string | null
+  day: number
+  proof_type: string
+  file_url: string | null
+  file_name: string | null
+  submitted_at: string
+}
+
+export interface PlatformStats {
+  total_pool_all_time: number
+  challenges_completed: number
+  average_completion_rate: number
+  recent_wins: Array<{
+    amount: number
+    participant_count: number
+    resolved_at: string
+  }>
+}
+
+// === V0 API Functions ===
+
 export async function getActiveChallenge(): Promise<Challenge | null> {
   return request<Challenge | null>('/api/v1/reliable/challenge/active')
 }
 
-/**
- * Get a challenge by public ID
- */
 export async function getChallenge(publicId: string): Promise<Challenge> {
   return request<Challenge>(`/api/v1/reliable/challenge/${publicId}`)
 }
 
-/**
- * Join a challenge with a stake
- */
 export async function joinChallenge(
   publicId: string,
   data: {
@@ -167,9 +239,6 @@ export async function joinChallenge(
   })
 }
 
-/**
- * Get current user's participation in a challenge
- */
 export async function getMyParticipation(
   publicId: string,
   userId: string
@@ -179,9 +248,6 @@ export async function getMyParticipation(
   )
 }
 
-/**
- * Submit daily proof
- */
 export async function submitDailyProof(
   participationId: string,
   data: {
@@ -197,32 +263,18 @@ export async function submitDailyProof(
   })
 }
 
-/**
- * Get user's kernel profile (reputation)
- */
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
   return request<UserProfile | null>(`/api/v1/reliable/user/${userId}/profile`)
 }
 
-/**
- * Get user's kernel records (challenge history)
- */
 export async function getUserRecords(userId: string): Promise<KernelRecord[]> {
   return request<KernelRecord[]>(`/api/v1/reliable/user/${userId}/records`)
 }
 
-/**
- * Get all participations for a user
- */
 export async function getUserParticipations(userId: string): Promise<Participation[]> {
   return request<Participation[]>(`/api/v1/reliable/user/${userId}/participations`)
 }
 
-// === Admin Functions ===
-
-/**
- * Create a new challenge (admin)
- */
 export async function createChallenge(data: {
   title: string
   description: string
@@ -240,20 +292,115 @@ export async function createChallenge(data: {
   })
 }
 
-/**
- * Start a challenge (admin)
- */
 export async function startChallenge(publicId: string): Promise<Challenge> {
   return request<Challenge>(`/api/v1/reliable/challenge/${publicId}/start`, {
     method: 'POST',
   })
 }
 
-/**
- * Resolve a challenge (admin)
- */
 export async function resolveChallenge(publicId: string): Promise<Challenge> {
   return request<Challenge>(`/api/v1/reliable/challenge/${publicId}/resolve`, {
     method: 'POST',
   })
+}
+
+// === Creator Challenge Room API Functions ===
+
+export async function createCreatorChallenge(data: {
+  preset?: string
+  title: string
+  description: string
+  proof_description?: string
+  proof_type?: 'image' | 'screenshot' | 'url'
+  duration_days: number
+  stake_amount_cents: number
+  currency?: string
+  creator_fee_percent?: number
+  slug?: string
+}, userId: string, userEmail: string): Promise<{ challenge: CreatorChallenge; public_url: string }> {
+  return request(`/api/v1/reliable/challenges?user_id=${encodeURIComponent(userId)}&user_email=${encodeURIComponent(userEmail)}`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function getPublicChallenge(slug: string): Promise<CreatorChallengePublic> {
+  return request<CreatorChallengePublic>(`/api/v1/reliable/challenges/${slug}`)
+}
+
+export async function joinCreatorChallenge(
+  slug: string,
+  userEmail: string
+): Promise<{ client_secret: string; payment_intent_id: string; participation_id: string }> {
+  return request(`/api/v1/reliable/challenges/${slug}/join`, {
+    method: 'POST',
+    headers: {
+      'X-User-Email': userEmail,
+    },
+  })
+}
+
+export async function getMyCreatorParticipation(
+  slug: string,
+  userId: string
+): Promise<Participation | null> {
+  return request(`/api/v1/reliable/challenges/${slug}/me?user_id=${encodeURIComponent(userId)}`)
+}
+
+export async function submitCreatorProof(
+  slug: string,
+  userId: string,
+  data: {
+    day: number
+    proof_type: 'image' | 'screenshot' | 'url'
+    file_key?: string
+    file_name?: string
+    url?: string
+  }
+): Promise<{ proof_id: string; status: string }> {
+  return request(`/api/v1/reliable/challenges/${slug}/proof?user_id=${encodeURIComponent(userId)}`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function getPendingProofs(
+  slug: string,
+  userId: string
+): Promise<{ proofs: PendingProof[] }> {
+  return request(`/api/v1/reliable/challenges/${slug}/proofs/pending?user_id=${encodeURIComponent(userId)}`)
+}
+
+export async function validateProof(
+  slug: string,
+  proofId: string,
+  userId: string,
+  approved: boolean
+): Promise<{ proof_id: string; status: string }> {
+  return request(`/api/v1/reliable/challenges/${slug}/proofs/${proofId}/validate?user_id=${encodeURIComponent(userId)}`, {
+    method: 'POST',
+    body: JSON.stringify({ approved }),
+  })
+}
+
+export async function validateAllProofs(
+  slug: string,
+  userId: string,
+  proofIds: string[],
+  approved: boolean
+): Promise<{ validated_count: number }> {
+  return request(`/api/v1/reliable/challenges/${slug}/proofs/validate-all?user_id=${encodeURIComponent(userId)}`, {
+    method: 'POST',
+    body: JSON.stringify({ approved, proof_ids: proofIds }),
+  })
+}
+
+export async function getPlatformStats(): Promise<PlatformStats> {
+  return request<PlatformStats>('/api/v1/reliable/stats')
+}
+
+export async function getMyCreatedChallenges(
+  userId: string
+): Promise<{ challenges: CreatorChallenge[] }> {
+  return request(`/api/v1/reliable/challenges/created?user_id=${encodeURIComponent(userId)}`)
 }
